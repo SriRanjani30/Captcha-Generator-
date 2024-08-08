@@ -14,6 +14,29 @@
             height: 100vh;
             margin: 0;
             background-color: #f5f5f5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark-mode {
+            background-color: #333;
+            color: #f5f5f5;
+        }
+        .control-panel {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .control-panel button, .control-panel select {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .control-panel button:hover, .control-panel select:hover {
+            background-color: #0056b3;
+            color: white;
         }
         .captcha-container {
             text-align: center;
@@ -23,6 +46,9 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             position: relative;
             transition: background-color 0.3s;
+        }
+        .captcha-container.dark-mode {
+            background-color: #444;
         }
         .captcha-container.expired {
             background-color: #ffe6e6;
@@ -37,10 +63,13 @@
             user-select: none;
             display: inline-block;
             border-radius: 5px;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, transform 0.3s;
         }
         #captcha.expired {
             background-color: #f8d7da;
+        }
+        #captcha.animating {
+            transform: scale(1.1);
         }
         .refresh-btn, .audio-btn {
             cursor: pointer;
@@ -83,13 +112,15 @@
         .feedback {
             margin-top: 10px;
             font-size: 14px;
-            transition: color 0.3s;
+            transition: color 0.3s, opacity 0.3s;
         }
         .success {
             color: green;
+            opacity: 1;
         }
         .error {
             color: red;
+            opacity: 1;
         }
         #timer {
             font-size: 14px;
@@ -98,6 +129,15 @@
     </style>
 </head>
 <body>
+    <div class="control-panel">
+        <button onclick="toggleDarkMode()">Switch to Dark Mode</button>
+        <label for="difficulty">Captcha Difficulty:</label>
+        <select id="difficulty" onchange="generateCaptcha()">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+    </div>
     <div class="captcha-container" id="captchaContainer">
         <div>
             <span id="captcha"></span>
@@ -114,13 +154,21 @@
         let captchaText;
 
         function generateCaptcha() {
-            const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()';
-            const captchaLength = 6;
+            const difficulty = document.getElementById('difficulty').value;
+            const chars = difficulty === 'hard'
+                ? '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()'
+                : difficulty === 'medium'
+                ? '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                : '0123456789abcdef';
+            const captchaLength = difficulty === 'hard' ? 8 : 6;
             captchaText = '';
             for (let i = 0; i < captchaLength; i++) {
                 captchaText += chars[Math.floor(Math.random() * chars.length)];
             }
-            document.getElementById('captcha').textContent = captchaText;
+            const captchaElem = document.getElementById('captcha');
+            captchaElem.textContent = captchaText;
+            captchaElem.classList.add('animating');
+            setTimeout(() => captchaElem.classList.remove('animating'), 300);
             document.getElementById('feedback').textContent = '';
             document.getElementById('captchaInput').classList.remove('error');
             document.getElementById('captchaContainer').classList.remove('expired');
@@ -129,8 +177,10 @@
 
         function playAudioCaptcha() {
             const msg = new SpeechSynthesisUtterance(captchaText);
-            msg.rate = 1; // Adjust rate if needed
-            msg.pitch = 1; // Adjust pitch if needed
+            msg.rate = 1;
+            msg.pitch = 1; 
+            const voices = window.speechSynthesis.getVoices();
+            msg.voice = voices[0];
             window.speechSynthesis.speak(msg);
         }
 
@@ -167,6 +217,14 @@
                     generateCaptcha();
                 }
             }, 1000);
+        }
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const container = document.getElementById('captchaContainer');
+            const isDarkMode = body.classList.toggle('dark-mode');
+            container.classList.toggle('dark-mode', isDarkMode);
+            document.querySelector('.control-panel button').textContent = isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
         }
 
         function resetCaptcha() {
