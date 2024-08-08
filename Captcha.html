@@ -21,6 +21,11 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: background-color 0.3s;
+        }
+        .captcha-container.expired {
+            background-color: #ffe6e6;
         }
         #captcha {
             font-size: 24px;
@@ -32,12 +37,20 @@
             user-select: none;
             display: inline-block;
             border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #captcha.expired {
+            background-color: #f8d7da;
         }
         .refresh-btn, .audio-btn {
             cursor: pointer;
             margin-left: 10px;
             font-size: 20px;
             vertical-align: middle;
+            transition: color 0.3s;
+        }
+        .refresh-btn:hover, .audio-btn:hover {
+            color: #0056b3;
         }
         input {
             padding: 10px;
@@ -46,6 +59,12 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             width: calc(100% - 22px);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input.error {
+            border-color: red;
+            box-shadow: 0 0 5px red;
         }
         button {
             padding: 10px 20px;
@@ -64,6 +83,7 @@
         .feedback {
             margin-top: 10px;
             font-size: 14px;
+            transition: color 0.3s;
         }
         .success {
             color: green;
@@ -78,15 +98,15 @@
     </style>
 </head>
 <body>
-    <div class="captcha-container">
+    <div class="captcha-container" id="captchaContainer">
         <div>
             <span id="captcha"></span>
-            <span class="refresh-btn" onclick="generateCaptcha()">&#x21bb;</span>
-            <span class="audio-btn" onclick="playAudioCaptcha()">🔊</span>
+            <span class="refresh-btn" onclick="generateCaptcha()" aria-label="Refresh Captcha">&#x21bb;</span>
+            <span class="audio-btn" onclick="playAudioCaptcha()" aria-label="Play Captcha Audio">🔊</span>
         </div>
-        <input type="text" id="captchaInput" placeholder="Enter the captcha" />
+        <input type="text" id="captchaInput" placeholder="Enter the captcha" aria-describedby="feedback" />
         <button onclick="validateCaptcha()">Submit</button>
-        <div id="feedback" class="feedback"></div>
+        <div id="feedback" class="feedback" aria-live="polite"></div>
         <div id="timer"></div>
     </div>
     <script>
@@ -94,7 +114,7 @@
         let captchaText;
 
         function generateCaptcha() {
-            const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()';
             const captchaLength = 6;
             captchaText = '';
             for (let i = 0; i < captchaLength; i++) {
@@ -102,11 +122,15 @@
             }
             document.getElementById('captcha').textContent = captchaText;
             document.getElementById('feedback').textContent = '';
+            document.getElementById('captchaInput').classList.remove('error');
+            document.getElementById('captchaContainer').classList.remove('expired');
             startTimer();
         }
 
         function playAudioCaptcha() {
             const msg = new SpeechSynthesisUtterance(captchaText);
+            msg.rate = 1; // Adjust rate if needed
+            msg.pitch = 1; // Adjust pitch if needed
             window.speechSynthesis.speak(msg);
         }
 
@@ -120,6 +144,7 @@
             } else {
                 feedback.textContent = 'Invalid captcha. Please try again.';
                 feedback.className = 'feedback error';
+                document.getElementById('captchaInput').classList.add('error');
                 generateCaptcha();
             }
         }
@@ -135,14 +160,21 @@
 
                 if (timeLeft <= 0) {
                     clearInterval(timer);
-                    feedback.textContent = 'Captcha expired. Please try again.';
-                    feedback.className = 'feedback error';
+                    document.getElementById('feedback').textContent = 'Captcha expired. Please try again.';
+                    document.getElementById('feedback').className = 'feedback error';
+                    document.getElementById('captchaInput').classList.add('error');
+                    document.getElementById('captchaContainer').classList.add('expired');
                     generateCaptcha();
                 }
             }, 1000);
         }
 
-        window.onload = generateCaptcha;
+        function resetCaptcha() {
+            clearInterval(timer);
+            generateCaptcha();
+        }
+
+        window.onload = resetCaptcha;
     </script>
 </body>
 </html>
