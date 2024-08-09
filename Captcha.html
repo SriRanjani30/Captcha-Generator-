@@ -11,10 +11,13 @@
             display: flex;
             height: 75vh;
             background-color: #f5f5f5;
+            background-image: url('Images/Background.jpg');
+            background-size: cover;
+            background-attachment: fixed;
             transition: background-color 0.3s, color 0.3s;
         }
         .sidebar {
-            width: 175px;
+            width: 100px;
             background-color: #333;
             color: #fff;
             padding: 20px;
@@ -54,10 +57,10 @@
             margin-bottom: 20px;
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: space-between;
             gap: 15px;
         }
-        .control-panel button, .control-panel select {
+        .control-panel button, .control-panel select, .control-panel input[type="checkbox"] {
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ccc;
@@ -65,7 +68,7 @@
             cursor: pointer;
             transition: background-color 0.3s, color 0.3s;
         }
-        .control-panel button:hover, .control-panel select:hover {
+        .control-panel button:hover, .control-panel select:hover, .control-panel input[type="checkbox"]:hover {
             background-color: #0056b3;
             color: white;
         }
@@ -77,12 +80,13 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             position: relative;
             transition: background-color 0.3s;
-            max-width: 400px;
+            max-width: 500px;
             width: 100%;
             margin: 0 auto;
         }
         .captcha-container.dark-mode {
             background-color: #444;
+            color: #ddd;
         }
         .captcha-container.expired {
             background-color: #ffe6e6;
@@ -168,6 +172,38 @@
         .hint span {
             font-weight: bold;
         }
+        .settings-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .settings-section {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .settings-section h3 {
+            margin-top: 0;
+        }
+        .settings-section label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .settings-section input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .settings-section .control-panel {
+            margin: 0;
+        }
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .control-panel button, .control-panel select {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -184,35 +220,46 @@
                     <span id="captcha"></span>
                     <span class="refresh-btn" onclick="generateCaptcha()" aria-label="Refresh Captcha">&#x21bb;</span>
                     <span class="audio-btn" onclick="playAudioCaptcha()" aria-label="Play Captcha Audio">🔊</span>
+                    <span class="hint-btn" onclick="showHint()" aria-label="Show Hint">💡</span>
                 </div>
                 <input type="text" id="captchaInput" placeholder="Enter the captcha" aria-describedby="feedback" />
                 <button onclick="validateCaptcha()">Submit</button>
                 <div id="feedback" class="feedback" aria-live="polite"></div>
                 <div id="timer"></div>
                 <div id="hint" class="hint"></div>
+                <button onclick="resetCaptcha()">Reset Captcha</button>
             </div>
         </div>
         <div id="settingsTab" class="tab-content">
             <h2>Settings</h2>
-            <div class="control-panel">
-                <button onclick="toggleDarkMode()">Switch to Dark Mode</button>
-                <label for="difficulty">Captcha Difficulty:</label>
-                <select id="difficulty" onchange="generateCaptcha()">
-                    <option value="easy">Easy</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="hard">Hard</option>
-                </select>
-                <button class="hint-btn" onclick="showHint()">Show Hint</button>
+            <div class="settings-container">
+                <div class="settings-section">
+                    <h3>General Settings</h3>
+                    <button onclick="toggleDarkMode()">Switch to Dark Mode</button>
+                </div>
+                <div class="settings-section">
+                    <h3>Captcha Difficulty</h3>
+                    <label for="difficulty">Select Difficulty:</label>
+                    <select id="difficulty" onchange="generateCaptcha()">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="settings-section">
+                    <label><input type="checkbox" id="enableHints" onchange="toggleHints()"> Enable Hints</label>
+                    <label><input type="checkbox" id="enableAudio" onchange="toggleAudio()"> Enable Audio</label>
+                </div>
             </div>
         </div>
         <div id="aboutTab" class="tab-content">
             <h2>About</h2>
-            <p>This is an advanced captcha generator application. It allows you to generate captchas of varying difficulty levels and supports dark mode. Use the settings tab to adjust preferences and the captcha tab to interact with the captcha.</p>
+            <p>This is an advanced captcha generator with various features including difficulty settings, hints, and dark mode.</p>
         </div>
     </div>
     <script>
+        let captchaText = '';
         let timer;
-        let captchaText;
 
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -222,23 +269,20 @@
         }
 
         function generateCaptcha() {
-            const difficulty = document.getElementById('difficulty').value;
-            const chars = difficulty === 'hard'
-                ? '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()'
-                : difficulty === 'medium'
-                ? '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                : '0123456789abcdef';
-            const captchaLength = difficulty === 'hard' ? 8 : 6;
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const length = document.getElementById('difficulty').value === 'hard' ? 6 : 5;
             captchaText = '';
-            for (let i = 0; i < captchaLength; i++) {
-                captchaText += chars[Math.floor(Math.random() * chars.length)];
+            for (let i = 0; i < length; i++) {
+                captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-            const captchaElem = document.getElementById('captcha');
-            captchaElem.textContent = captchaText;
-            captchaElem.classList.add('animating');
-            setTimeout
-            setTimeout(() => captchaElem.classList.remove('animating'), 300);
+            document.getElementById('captcha').textContent = captchaText;
+            document.getElementById('captcha').classList.add('animating');
+            setTimeout(() => {
+                document.getElementById('captcha').classList.remove('animating');
+            }, 500);
+            document.getElementById('captchaInput').value = '';
             document.getElementById('feedback').textContent = '';
+            document.getElementById('feedback').className = 'feedback';
             document.getElementById('captchaInput').classList.remove('error');
             document.getElementById('captchaContainer').classList.remove('expired');
             startTimer();
@@ -246,6 +290,7 @@
         }
 
         function playAudioCaptcha() {
+            if (!document.getElementById('enableAudio').checked) return;
             const msg = new SpeechSynthesisUtterance(captchaText);
             msg.rate = 1;
             msg.pitch = 1;
@@ -300,11 +345,20 @@
         function showHint() {
             const hintElem = document.getElementById('hint');
             const difficulty = document.getElementById('difficulty').value;
-            if (difficulty === 'hard') {
-                hintElem.textContent = 'Hint: The captcha contains special characters.';
+            if (document.getElementById('enableHints').checked) {
+                hintElem.style.display = 'block';
+                if (difficulty === 'hard') {
+                    hintElem.textContent = 'Hint: The captcha contains special characters.';
+                } else {
+                    hintElem.textContent = 'Hint: The captcha contains only letters and numbers.';
+                }
             } else {
-                hintElem.textContent = 'Hint: The captcha contains only letters and numbers.';
+                hintElem.style.display = 'none';
             }
+        }
+
+        function toggleHints() {
+            showHint();
         }
 
         function resetCaptcha() {
